@@ -124,64 +124,36 @@ function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
 			} );
 		},
 		is( operator, otherDate, precision = 'day' ) {
-			function getSafeOperator() {
-				if (
-					! [ '>=', '>', '=', '<', '<=' ].includes( operator ) ||
-					operator == '='
-				) {
-					return '===';
+			if ( otherDate == null ) {
+				return false;
+			}
+
+			const referenceRange = ( function getReferenceRange() {
+				switch ( operator ) {
+					case '<=':
+						return [ null, otherDate ];
+					case '<':
+						const beforeOtherDate = otherDate.subtract( {
+							[ precision ]: 1,
+						} );
+
+						return [ null, beforeOtherDate ];
+					case '=':
+						return otherDate;
+					case '>':
+						const afterOtherDate = otherDate.add( {
+							[ precision ]: 1,
+						} );
+
+						return [ afterOtherDate, null ];
+					case '>=':
+						return [ otherDate, null ];
+					default:
+						throw new InvalidComparisonOperatorError( operator );
 				}
+			} )();
 
-				return operator;
-			}
-
-			/**
-			 * @param {number | string} value
-			 * @param {number} maxLength
-			 * @returns
-			 */
-			function padded( value, maxLength = 2 ) {
-				return String( value ).padStart( maxLength, '0' );
-			}
-
-			/**
-			 * @param {Date} date - Date whose comparable should be generated.
-			 * @param {DateUnit} precision - Comparable precision.
-			 * @returns {string}
-			 */
-			function getComparableDate( date, precision ) {
-				const COMPARE_TO = {
-					year: 1,
-					month: 2,
-					day: 3,
-				};
-
-				return [
-					date.getUTCFullYear(),
-					padded( date.getUTCMonth() ),
-					padded( date.getUTCDate() ),
-				]
-					.slice( 0, COMPARE_TO[ precision ] )
-					.join( '' );
-			}
-
-			/**
-			 * Compares two numbers, based on the given `operator`.
-			 * @param {number} a
-			 * @param {number} b
-			 * @returns {boolean}
-			 */
-			function compare( a, b ) {
-				// Source: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_eval!
-				return Function(
-					`"use strict";return (${ a } ${ getSafeOperator() } ${ b })`
-				)();
-			}
-
-			return compare(
-				Number( getComparableDate( utcDate, precision ) ),
-				Number( getComparableDate( otherDate.get(), precision ) )
-			);
+			return this.matches( referenceRange );
 		},
 		toString() {
 			return utcDate.toISOString();
@@ -215,6 +187,18 @@ function add( date, unit, value ) {
 	);
 
 	return XBDateFactory( newDate );
+}
+
+export class InvalidComparisonOperatorError extends Error {
+	/**
+	 * @constructor
+	 * @param {string} operator
+	 */
+	constructor( operator ) {
+		super(
+			`Invalid comparison operator: ${ operator }; only >=, >, =, < , and <= are accepted.`
+		);
+	}
 }
 
 export default XBDateFactory;

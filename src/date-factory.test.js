@@ -1,4 +1,4 @@
-import XBDateFactory from './date-factory';
+import XBDateFactory, { InvalidComparisonOperatorError } from './date-factory';
 
 describe( 'XBDateFactory', () => {
 	it( 'normalizes date based on the provided options', () => {
@@ -270,5 +270,14 @@ describe( 'XBDateFactory', () => {
 				).toBe( expected );
 			}
 		);
+
+		it( 'throws an exception when an invalid operator is provided', () => {
+			expect( () =>
+				XBDateFactory( new Date( '2000-12-25T12:00:00' ) ).is(
+					'*',
+					XBDateFactory( '2000-12-25T12:00:00' )
+				)
+			).toThrowError( new InvalidComparisonOperatorError( '*' ) );
+		} );
 	} );
 } );
