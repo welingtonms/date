@@ -32,4 +32,9 @@
  * @property {() => string} toString - Return this date as a string value in ISO format.
  */
 
+/**
+ * @typedef {Object} XBDateFormatter
+ * @property {(date: XBDate) => string} format - Format the given XBDate
+ */
+
 export default function noop() {}
