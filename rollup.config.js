@@ -1,18 +1,12 @@
 import { terser } from 'rollup-plugin-terser';
 import analyze from 'rollup-plugin-analyzer';
 import babel from '@rollup/plugin-babel';
-import del from 'rollup-plugin-delete';
 import external from 'rollup-plugin-peer-deps-external';
 import resolve from '@rollup/plugin-node-resolve';
 
-// import pkg from './package.json';
-
 module.exports = {
-	input: {
-		'to-array': './src/to-array.js',
-	},
+	input: './src/index.js',
 	plugins: [
-		del( { targets: [ `dist/` ] } ),
 		external(),
 		babel( {
 			// exclude: 'node_modules/**', // only transpile our source code
