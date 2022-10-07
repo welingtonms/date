@@ -1,3 +1,21 @@
+# 1.0.0 (2022-10-07)
+
+
+### Bug Fixes
+
+* fix repository url ([fc9ccea](https://github.com/welingtonms/xb-date/commit/fc9ccea19c56d56db21754b7f70907aaa70c7ab3))
+* fix util extension ([925c98a](https://github.com/welingtonms/xb-date/commit/925c98a215201737ca415396425b08b33087c69f))
+
+
+### Features
+
+* add constants file ([6227662](https://github.com/welingtonms/xb-date/commit/62276627ac0e1c744b9a11187cc87ec65e381b42))
+* add date constraints ([75a9f6e](https://github.com/welingtonms/xb-date/commit/75a9f6ef1b8b3e3f24373255308cd86ad5bc3dee))
+* add date factory ([61bce4b](https://github.com/welingtonms/xb-date/commit/61bce4becc93727a27ed0f6968b9d7f2ff2f6f89))
+* add date formatter ([fd388b1](https://github.com/welingtonms/xb-date/commit/fd388b1297a3d7defb79da62f77cd16b24fbabb3))
+* add utils ([51935a6](https://github.com/welingtonms/xb-date/commit/51935a6f3bc8228305b6c2bdd59336754abf15e5))
+* use matches in comparison ([48573e6](https://github.com/welingtonms/xb-date/commit/48573e63eadd30dc763383480bc1d8f1a89a175f))
+
 ## [1.1.1](https://github.com/welingtonms/library/compare/v1.1.0...v1.1.1) (2022-06-20)
 
 
