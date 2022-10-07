@@ -21,15 +21,15 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/welingtonms/library.git"
+		"url": "https://github.com/welingtonms/xb-date.git"
 	},
 	"keywords": [],
 	"author": "Welington Silva",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/cheesebit/library/issues"
+		"url": "https://github.com/welingtonms/xb-date/issues"
 	},
-	"homepage": "https://github.com/cheesebit/library#readme",
+	"homepage": "https://github.com/welingtonms/xb-date#readme",
 	"devDependencies": {
 		"@babel/core": "7.19.3",
 		"@babel/preset-env": "7.19.3",
