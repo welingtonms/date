@@ -12,12 +12,12 @@
 	},
 	"scripts": {
 		"start": "yarn watch",
-		"test": "jest",
+		"test": "TZ=UTC jest",
 		"coverage": "jest --coverage",
 		"watch": "rollup -c --watch",
 		"build": "yarn generate-types && rollup -c",
 		"generate-types": "tsc",
-		"release": "semantic-release --dry-run"
+		"release": "semantic-release"
 	},
 	"repository": {
 		"type": "git",

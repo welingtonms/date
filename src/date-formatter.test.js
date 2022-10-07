@@ -69,7 +69,7 @@ describe( 'XBDateFormatterFactory', () => {
 			XBDateFormatterFactory( 'MM/DD/YYYY HH:mm:ss' ).format(
 				XBDateFactory( '2022-02-01T12:00:00.000+03:00' )
 			)
-		).toBe( '02/01/2022 09:00:00' );
+		).toBe( '02/01/2022 12:00:00' );
 
 		expect(
 			XBDateFormatterFactory( 'MM/DD/YYYY, hh:mm A' ).format(
@@ -77,7 +77,7 @@ describe( 'XBDateFormatterFactory', () => {
 					normalize: false,
 				} )
 			)
-		).toBe( '02/01/2022, 04:30 AM' );
+		).toBe( '02/01/2022, 07:30 AM' );
 
 		expect(
 			XBDateFormatterFactory( 'MM/DD/YYYY, hh:mm a' ).format(
@@ -85,7 +85,7 @@ describe( 'XBDateFormatterFactory', () => {
 					normalize: false,
 				} )
 			)
-		).toBe( '02/01/2022, 08:30 am' );
+		).toBe( '02/01/2022, 11:30 am' );
 
 		expect(
 			XBDateFormatterFactory( 'MM/DD/YYYY HH:mm:ss' ).format(
@@ -93,6 +93,6 @@ describe( 'XBDateFormatterFactory', () => {
 					normalize: false,
 				} )
 			)
-		).toBe( '02/01/2022 05:22:33' );
+		).toBe( '02/01/2022 08:22:33' );
 	} );
 } );
