@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/welingtonms/xb-date/compare/v1.0.0...v1.0.1) (2023-02-16)
+
+
+### Bug Fixes
+
+* fix exports ([ef8b987](https://github.com/welingtonms/xb-date/commit/ef8b987e051f301c639431a35e729311ba5fffd0))
+
 # 1.0.0 (2022-10-07)
 
 
