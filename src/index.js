@@ -1,7 +1,7 @@
 export {
-	default as DataFactory,
+	default as DateFactory,
 	InvalidComparisonOperatorError,
 } from './date-factory';
-export { default as DataFormatter } from './date-formatter';
+export { default as DateFormatter } from './date-formatter';
 export * from './types';
 export * from './constants';
