@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/welingtonms/xb-date/compare/v1.0.1...v1.0.2) (2023-02-16)
+
+
+### Bug Fixes
+
+* set correct export names ([ab00e63](https://github.com/welingtonms/xb-date/commit/ab00e63c64906a6ec73e59127ea557de10a11c35))
+
 ## [1.0.1](https://github.com/welingtonms/xb-date/compare/v1.0.0...v1.0.1) (2023-02-16)
 
 
