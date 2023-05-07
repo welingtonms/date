@@ -1,10 +1,34 @@
-import { getConstraintEvaluator } from './date-constraints';
-import isEmpty from './is-empty';
+import XBDateConstraintFactory from './date-constraints';
+import { getRangeEvaluator, normalizeToUTC, toRange } from './date-utils';
+import { InvalidComparisonOperatorError } from './errors';
 
-/** @type {XBDateFactoryOptions} */
-export const DEFAULT_OPTIONS = {
-	normalize: true,
-};
+/**
+ * Add the given `value` to the provided `key` of the provided `date`.
+ * @param {Date} date - Date where the operation should be performed.
+ * @param {DateUnit} unit - period
+ * @param {number} value - value to be added
+ * @returns {XBDate} new date after the operation.
+ */
+export function add( date, unit, value ) {
+	const increment = {
+		year: 0,
+		month: 0,
+		day: 0,
+		[ unit ]: value,
+	};
+
+	const newDate = new Date(
+		date.getUTCFullYear() + increment.year,
+		date.getUTCMonth() + increment.month,
+		date.getUTCDate() + increment.day,
+		date.getUTCHours(),
+		date.getUTCMinutes(),
+		date.getUTCSeconds(),
+		date.getUTCMilliseconds()
+	);
+
+	return newDate;
+}
 
 /**
  * Ideally, follow the date/time string formats:
@@ -15,39 +39,17 @@ export const DEFAULT_OPTIONS = {
  * `dateArg` is expected to have timezone information or to be UTC.
  *
  * By default, we normalize the input date to 12:00:00 (UTC); this simplifies comparison of dates; be mindful
- * of this when using this helper for time relate logic.
+ * of this when using this helper for time-related logic.
  * You can disable this behavior by passing `options.normalize: false`.
  *
  * @param {InputDate} [dateArg] - Date
+ * @param {XBCreateDateOptions} [optionsArg] - Additional options
  * @return {XBDate}
  */
-function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
-	const options = { ...DEFAULT_OPTIONS, ...optionsArg };
+function createDate( dateArg, optionsArg ) {
+	const utcDate = normalizeToUTC( dateArg, optionsArg );
 
-	const utcDate = ( function normalizeToUTC() {
-		let date = new Date();
-
-		if ( dateArg != null ) {
-			date = new Date( dateArg );
-		}
-
-		// create a date with local timezone based on the UTC input date
-		const utcDate = new Date(
-			Date.UTC(
-				date.getUTCFullYear(),
-				date.getUTCMonth(),
-				date.getUTCDate(),
-				options.normalize ? 12 : date.getUTCHours(),
-				options.normalize ? 0 : date.getUTCMinutes(),
-				options.normalize ? 0 : date.getUTCSeconds(),
-				options.normalize ? 0 : date.getUTCMilliseconds()
-			)
-		);
-
-		return utcDate;
-	} )();
-
-	return {
+	return Object.freeze( {
 		get() {
 			return utcDate;
 		},
@@ -76,24 +78,24 @@ function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
 			return utcDate.getUTCSeconds();
 		},
 		add( summands ) {
-			const result = Object.keys( summands || [] ).reduce(
-				( newDate, key ) => {
-					return add( newDate, key, summands[ key ] );
+			const result = Object.entries( summands || [] ).reduce(
+				( newDate, [ key, summand ] ) => {
+					return add( newDate, key, summand );
 				},
 				utcDate
 			);
 
-			return result;
+			return XBDateFactory( result );
 		},
 		subtract( subtrahends ) {
-			const result = Object.keys( subtrahends || [] ).reduce(
-				( newDate, key ) => {
-					return add( newDate, key, -1 * subtrahends[ key ] );
+			const result = Object.entries( subtrahends || [] ).reduce(
+				( newDate, [ key, subtrahend ] ) => {
+					return add( newDate, key, -1 * subtrahend );
 				},
 				utcDate
 			);
 
-			return result;
+			return XBDateFactory( result );
 		},
 		set( values ) {
 			const newValue = {
@@ -109,26 +111,20 @@ function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
 
 			return this;
 		},
-		matches( ...constraints ) {
-			if ( isEmpty( constraints ) ) {
-				return false;
-			}
-
-			const constraintEvaluators = constraints.map(
-				getConstraintEvaluator
-			);
+		matches( ...constraintsArgs ) {
+			const constraints = XBDateConstraintFactory( ...constraintsArgs );
 			const date = XBDateFactory( utcDate );
 
-			return constraintEvaluators.some( ( evaluator ) => {
-				return evaluator( date );
-			} );
+			return constraints.matches( date );
 		},
 		is( operator, otherDate, precision = 'day' ) {
 			if ( otherDate == null ) {
 				return false;
 			}
 
-			const referenceRange = ( function getReferenceRange() {
+			return this.matches( getReferenceRange() );
+
+			function getReferenceRange() {
 				switch ( operator ) {
 					case '<=':
 						return [ null, otherDate ];
@@ -151,60 +147,33 @@ function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
 					default:
 						throw new InvalidComparisonOperatorError( operator );
 				}
-			} )();
-
-			return this.matches( referenceRange );
+			}
 		},
 		toString() {
 			return utcDate.toISOString();
 		},
-	};
+	} );
 }
 
 /**
- * Add the given `value` to the provided `key` of the provided `date`.
- * @param {Date} date - Date where the operation should be performed.
- * @param {DateUnit} unit - period
- * @param {number} value - value to be added
- * @returns {XBDate} new date after the operation.
+ *
+ * @param {{startDate?: InputDate; endDate?: InputDate}} rangeArg
+ * @param {*} optionsArg
  */
-function add( date, unit, value ) {
-	const increment = {
-		year: 0,
-		month: 0,
-		day: 0,
-		[ unit ]: value,
-	};
+function createDateRange( rangeArg, optionsArg ) {
+	const range = toRange( rangeArg, optionsArg );
 
-	const newDate = new Date(
-		date.getUTCFullYear() + increment.year,
-		date.getUTCMonth() + increment.month,
-		date.getUTCDate() + increment.day,
-		date.getUTCHours(),
-		date.getUTCMinutes(),
-		date.getUTCSeconds(),
-		date.getUTCMilliseconds()
-	);
-
-	return XBDateFactory( newDate );
+	return Object.freeze( {
+		matches: getRangeEvaluator( range ),
+	} );
 }
 
-export class InvalidComparisonOperatorError extends Error {
-	/**
-	 * @constructor
-	 * @param {string} operator
-	 */
-	constructor( operator ) {
-		super(
-			`Invalid comparison operator: ${ operator }; only >=, >, =, < , and <= are accepted.`
-		);
-	}
-}
+const XBDateFactory = Object.freeze( { createDate, createDateRange } );
 
 export default XBDateFactory;
 
 /**
- * @typedef {import('./types').XBDateFactoryOptions} XBDateFactoryOptions
+ * @typedef {import('./types').XBCreateDateOptions} XBCreateDateOptions
  * @typedef {import('./types').DateUnit} DateUnit
  * @typedef {import('./types').InputDate} InputDate
  * @typedef {import('./types').SingleDateConstraint} SingleDateConstraint
