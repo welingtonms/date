@@ -1,9 +1,11 @@
 import tokenizer from './format-tokenizer';
+import { padded } from './utils';
 
 function identity( value ) {
 	return value;
 }
 
+// TODO: add support for timezone
 /**
  * This helpers provides a convenient layer on top of `Intl.DateTimeFormat`,
  * using common tokens (based on `momentjs`) to format dates.
@@ -115,16 +117,6 @@ const DEFAULT_FORMATTERS = {
 		hour12: true,
 	} ),
 };
-
-/**
- * Pad start the given value with `0` untils it reaches the provided `length`.
- * @param {number | string} value
- * @param {number} [length]
- * @returns {string}
- */
-function padded( value, length = 2 ) {
-	return String( value ).padStart( length, '0' );
-}
 
 /**
  * Apply additional formatting.

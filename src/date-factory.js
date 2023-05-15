@@ -4,6 +4,45 @@ import { InvalidComparisonOperatorError } from './errors';
 import { padded } from './utils';
 import { getFormattedOffset } from './timezone-utils';
 
+function getTimezone( date ) {
+	const offsetInMinutes = date.getTimezoneOffset();
+	const offsetHours = Math.abs( Math.floor( offsetInMinutes / 60 ) );
+	const offsetMinutes = Math.abs( offsetInMinutes % 60 );
+	const offsetSign = offsetInMinutes > 0 ? '-' : '+';
+	const timezone = offsetSign + padded( offsetHours ) + ':' + padded( offsetMinutes );
+	return timezone;
+}
+
+/**
+ *
+ * @param {string} dateArg
+ */
+function tokenize( dateArg ) {
+	let [ year, month, day, hours, minutes, seconds, milliseconds, timezone ] = [
+		'',
+		'',
+		'',
+		'',
+		'00',
+		'00',
+		'000',
+		'Z',
+	];
+
+	if ( typeof dateArg === 'string' ) {
+		year = dateArg?.slice( 0, 4 ); //?
+		month = dateArg?.slice( 5, 7 ); //?
+		day = dateArg?.slice( 8, 10 ); //?
+		hours = dateArg?.slice( 11, 13 ) ?? '00'; //?
+		minutes = dateArg?.slice( 14, 16 ) ?? '00'; //?
+		seconds = dateArg?.slice( 17, 19 ) ?? '00'; //?
+		milliseconds = dateArg?.slice( 20, 23 ) ?? '000'; //?
+		timezone = dateArg?.slice( 23 ) ?? 'Z'; //?
+	}
+
+	return { year, month, day, hours, minutes, seconds, milliseconds, timezone };
+}
+
 /**
  * Ideally, follow the date/time string formats:
  * * `YYYY-MM-DD`
@@ -12,93 +51,89 @@ import { getFormattedOffset } from './timezone-utils';
  *
  * `dateArg` is expected to have timezone information or to be UTC.
  *
- * By default, we normalize the input date to 12:00:00 (UTC); this simplifies comparison of dates; be mindful
- * of this when using this helper for time-related logic.
- * You can disable this behavior by passing `options.normalize: false`.
+ * It uses overloaded getters and setters: Calling these methods without parameters acts as a getter,
+ *  and calling them with a parameter acts as a setter.
  *
  * @param {InputDate} [dateArg] - Date
  * @param {Intl.DateTimeFormatOptions['timeZone']} [timezoneArg] - timezone
  * @return {XBDate}
  */
 function createDate( dateArg, timezoneArg ) {
-	const date = dateArg != null ? new Date( dateArg ) : new Date();
-	let timezone = timezoneArg ?? null;
-	let formatters = timezoneArg ? createFormaters( timezoneArg ) : null;
+	let date = dateArg != null ? new Date( dateArg ) : new Date();
+	let formatters = createFormaters( timezoneArg );
 
 	return Object.freeze( {
 		get() {
 			// should I run any conversion here based on the provided timezone?
 			return date;
 		},
-		timezone( timezoneArg ) {
-			return createDate( date, timezoneArg );
-		},
-		getYear() {
-			if ( timezone != null ) {
-				return Number( formatters.year.format( date ) );
-			}
-
-			return date.getFullYear();
-		},
-		getMonth() {
-			if ( timezone != null ) {
-				// subtract 1 to be equivalent to the date.getMonth
-				return Number( formatters.month.format( date ) ) - 1;
-			}
-
-			return date.getMonth();
-		},
-		getDate() {
-			if ( timezone != null ) {
-				return Number( formatters.day.format( date ) );
-			}
-
-			return date.getDate();
-		},
 		getTime() {
 			return date.getTime();
 		},
-		getWeekday() {
-			if ( timezone != null ) {
-				return Number( formatters.weekday.format( date ) );
+		year( newYear ) {
+			if ( newYear !== undefined ) {
+				date.setFullYear( newYear );
 			}
 
-			return date.getDay();
+			return Number( formatters.year.format( date ) );
 		},
-		getHours() {
-			if ( timezone != null ) {
-				return Number( formatters.hour.format( date ) );
-			}
+		month(newMonth) {
+			// set month if newMonth is undefined, return the current month
+			if ( newMonth!== undefined ) {
+                date.setMonth( newMonth );
+            }
 
-			return date.getHours();
+			// subtract 1 to be equivalent to the date.getMonth
+            return Number( formatters.month.format( date ) ) - 1;;
 		},
-		getMinutes() {
-			if ( timezone != null ) {
-				return Number( formatters.minute.format( date ) );
-			}
+		date(newDate) {
+			if ( newDate!== undefined ) {
+                date.setDate( newDate );
+            }
 
-			return date.getMinutes();
+            return Number( formatters.day.format( date ) );
 		},
-		getSeconds() {
-			if ( timezone != null ) {
-				return Number( formatters.second.format( date ) );
-			}
 
-			return date.getSeconds();
+		weekday() {
+			return Number( formatters.weekday.format( date ) );
 		},
-		getMilliseconds() {
-			if ( timezone != null ) {
-				return Number( formatters.millisecond.format( date ) );
-			}
+		hours(newHours) {
+			if ( newHours!== undefined ) {
+                date.setHours( newHours );
+            }
 
-			return date.getMilliseconds();
+            return Number( formatters.hour.format( date ) );
+		},
+		minutes(newMinutes) {
+			if ( newMinutes!== undefined ) {
+                date.setMinutes( newMinutes );
+            }
+
+            return Number( formatters.minute.format( date ) );
+		},
+		seconds(newSeconds) {
+			if ( newSeconds!== undefined ) {
+                date.setSeconds( newSeconds );
+            }
+
+            return Number( formatters.second.format( date ) );
+		},
+		milliseconds(newMilliseconds) {
+			if ( newMilliseconds!== undefined ) {
+                date.setMilliseconds( newMilliseconds );
+            }
+
+            return Number( formatters.millisecond.format( date ) );
+		},
+		timezone( timezoneArg ) {
+			return createDate( date, timezoneArg );
 		},
 		add( summands ) {
 			const result = Object.entries( summands || [] ).reduce(
 				( newDate, [ key, summand ] ) => {
 					return add( newDate, key, summand );
 				},
-				utcDate
+				date
 			);
 
 			return createDate( result );
@@ -108,69 +143,65 @@ function createDate( dateArg, timezoneArg ) {
 				( newDate, [ key, subtrahend ] ) => {
 					return add( newDate, key, -1 * subtrahend );
 				},
-				utcDate
+				date
 			);
 
 			return createDate( result );
 		},
-		set( overridesOrPeriod ) {
-			let newValue = {
-				year: date.getFullYear(),
-				month: date.getMonth(),
-				day: date.getDate(),
-				hour: date.getHours(),
-				minute: date.getMinutes(),
-				second: date.getSeconds(),
-				millisecond: date.getMilliseconds(),
-			};
-
-			if ( typeof overridesOrPeriod === 'string' ) {
-				switch ( overridesOrPeriod ) {
-					case 'start-of-day':
-						newValue = {
-							...newValue,
-							...{
-								hour: 0,
-								minute: 0,
-								second: 0,
-								millisecond: 0,
-							},
-						};
-						break;
-					case 'middle-of-day':
-						newValue = {
-							...newValue,
-							...{
-								hour: 12,
-								minute: 0,
-								second: 0,
-								millisecond: 0,
-							},
-						};
-						break;
-					case 'end-of-day':
-						newValue = {
-							...newValue,
-							...{
-								hour: 23,
-								minute: 59,
-								second: 59,
-								millisecond: 999,
-							},
-						};
-						break;
-				}
-			} else {
-				newValue = { ...newValue, ...overridesOrPeriod };
+		reset( period ) {
+			switch ( period ) {
+				case 'start-of-day':
+					newValue.hours = 0;
+					newValue.minutes = 0;
+					newValue.seconds = 0;
+					newValue.milliseconds = 0;
+					break;
+				case 'middle-of-day':
+					newValue.hours = 12;
+					newValue.minutes = 0;
+					newValue.seconds = 0;
+					newValue.milliseconds = 0;
+					break;
+				case 'end-of-day':
+					newValue.hours = 23;
+					newValue.minutes = 59;
+					newValue.seconds = 59;
+					newValue.milliseconds = 999;
+					break;
+			}
+		},
+		set( overrides ) {
+			if ( overrides == null ) {
+				return this;
 			}
 
-			date.setFullYear( newValue.year );
-			date.setMonth( newValue.month );
-			date.setDate( newValue.day );
-			date.setHours( newValue.hour );
-			date.setMinutes( newValue.minute );
-			date.setSeconds( newValue.second );
-			date.setMilliseconds( newValue.millisecond );
+			if ( overrides.year != null ) {
+				date.setFullYear( overrides.year );
+			}
+
+			if ( overrides.month != null ) {
+				date.setMonth( overrides.month );
+			}
+
+			if ( overrides.day != null ) {
+				date.setDate( overrides.day );
+			}
+
+			if ( overrides.hours != null ) {
+				date.setHours( overrides.hours );
+			}
+
+			if ( overrides.minutes != null ) {
+				date.setMinutes( overrides.minutes );
+			}
+
+			if ( overrides.seconds != null ) {
+				date.setSeconds( overrides.seconds );
+			}
+
+			if ( overrides.milliseconds != null ) {
+				date.setMilliseconds( overrides.milliseconds );
+			}
 
 			return this;
 		},
@@ -224,18 +255,22 @@ function createDate( dateArg, timezoneArg ) {
 			year: 0,
 			month: 0,
 			day: 0,
+			hours: 0,
+			minutes: 0,
+			seconds: 0,
+			milliseconds: 0,
 			[ unit ]: value,
 		};
 
-		const newDate = new Date(
-			date.getUTCFullYear() + increment.year,
-			date.getUTCMonth() + increment.month,
-			date.getUTCDate() + increment.day,
-			date.getUTCHours(),
-			date.getUTCMinutes(),
-			date.getUTCSeconds(),
-			date.getUTCMilliseconds()
-		);
+		const newDate = new Date( date );
+
+		newDate.setFullYear( newDate.getFullYear() + increment.year );
+		newDate.setMonth( newDate.getMonth() + increment.month );
+		newDate.setDate( newDate.getDate() + increment.day );
+		newDate.setHours( newDate.getHours() + increment.hours );
+		newDate.setMinutes( newDate.getMinutes() + increment.minutes );
+		newDate.setSeconds( newDate.getSeconds() + increment.seconds );
+		newDate.setMilliseconds( newDate.getMilliseconds() + increment.milliseconds );
 
 		return newDate;
 	}
@@ -246,44 +281,46 @@ function createDate( dateArg, timezoneArg ) {
 		return constraints.matches( date );
 	}
 
-	function createFormaters( timezone ) {
+	function createFormaters( timezoneArg ) {
+		const timezome = timezoneArg != null ? { timeZone: timezoneArg } : {};
+
 		const yearFormatter = new Intl.DateTimeFormat( 'en', {
 			year: 'numeric',
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		const monthFormatter = new Intl.DateTimeFormat( 'en', {
 			month: '2-digit',
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		const dayFormatter = new Intl.DateTimeFormat( 'en', {
 			day: '2-digit',
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		const hourFormatter = new Intl.DateTimeFormat( 'en', {
 			hour: '2-digit',
 			hour12: false,
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		const minuteFormatter = new Intl.DateTimeFormat( 'en', {
 			minute: '2-digit',
-			timeZone: timezone,
+			...timezome,
 		} );
 		const secondFormatter = new Intl.DateTimeFormat( 'en', {
 			second: '2-digit',
-			timeZone: timezone,
+			...timezome,
 		} );
 		const millisecondFormatter = new Intl.DateTimeFormat( 'en', {
 			fractionalSecondDigits: '3',
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		const weekdayFormatter = new Intl.DateTimeFormat( 'en', {
 			weekday: 'long',
-			timeZone: timezone,
+			...timezome,
 		} );
 
 		return {
