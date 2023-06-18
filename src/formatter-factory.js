@@ -3,15 +3,6 @@ import { InvalidFormatValueError } from './errors';
 import { createFormatters } from './formatter-utils';
 
 /**
- * @template T
- * @param {T} value
- * @returns {T}
- */
-function identity( value ) {
-	return value;
-}
-
-/**
  * Break provided format into supported tokens.
  * @param {string} format
  * @returns {string[]} Returns the provided format broken into supported tokens.
@@ -58,22 +49,10 @@ export function createFormatter( format, locales = 'default', timezone ) {
 					}
 
 					try {
-						// let value = date;
-
-						// if ( DEFAULT_FORMATTERS[ token ] ) {
-						// 	value = DEFAULT_FORMATTERS[ token ].format( value );
-						// }
-
-						// if ( ADDITIONAL_FORMATTERS[ token ] ) {
-						// 	return ADDITIONAL_FORMATTERS[ token ]( value );
-						// }
-
 						return formatters[ token ]( date );
 					} catch {
 						throw new InvalidFormatValueError( date, token );
 					}
-
-					return null;
 				} )
 				.join( '' );
 		},
