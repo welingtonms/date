@@ -20,3 +20,14 @@ export class InvalidDateRangeError extends Error {
 		super( `Invalid range: [${ start }, ${ end }]` );
 	}
 }
+
+export class InvalidFormatValueError extends Error {
+	/**
+	 * @constructor
+	 * @param {unknown} value
+	 * @param {string} token
+	 */
+	constructor( value, token ) {
+		super( `Invalid value ${ value } provided to format token ${ token }` );
+	}
+}
