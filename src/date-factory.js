@@ -1,50 +1,11 @@
-import XBDateConstraintFactory from './date-constraints';
-import { getRangeEvaluator, toUTC, toRange } from './date-utils';
+import { createFormatters } from './formatter-utils';
 import { InvalidComparisonOperatorError } from './errors';
-import { padded } from './utils';
-import { getFormattedOffset } from './timezone-utils';
-
-function getTimezone( date ) {
-	const offsetInMinutes = date.getTimezoneOffset();
-	const offsetHours = Math.abs( Math.floor( offsetInMinutes / 60 ) );
-	const offsetMinutes = Math.abs( offsetInMinutes % 60 );
-	const offsetSign = offsetInMinutes > 0 ? '-' : '+';
-	const timezone = offsetSign + padded( offsetHours ) + ':' + padded( offsetMinutes );
-	return timezone;
-}
-
-/**
- *
- * @param {string} dateArg
- */
-function tokenize( dateArg ) {
-	let [ year, month, day, hours, minutes, seconds, milliseconds, timezone ] = [
-		'',
-		'',
-		'',
-		'',
-		'00',
-		'00',
-		'000',
-		'Z',
-	];
-
-	if ( typeof dateArg === 'string' ) {
-		year = dateArg?.slice( 0, 4 ); //?
-		month = dateArg?.slice( 5, 7 ); //?
-		day = dateArg?.slice( 8, 10 ); //?
-		hours = dateArg?.slice( 11, 13 ) ?? '00'; //?
-		minutes = dateArg?.slice( 14, 16 ) ?? '00'; //?
-		seconds = dateArg?.slice( 17, 19 ) ?? '00'; //?
-		milliseconds = dateArg?.slice( 20, 23 ) ?? '000'; //?
-		timezone = dateArg?.slice( 23 ) ?? 'Z'; //?
-	}
-
-	return { year, month, day, hours, minutes, seconds, milliseconds, timezone };
-}
+import { toRange } from './date-utils';
+import { createConstraints } from './constraints-factory';
 
 /**
  * Ideally, follow the date/time string formats:
+ * * 567432000000
  * * `YYYY-MM-DD`
  * * `YYYY-MM-DDTHH:mm:ss.sssZ`
  * * `YYYY-MM-DDTHH:mm:ss.sss+00:00`
@@ -54,15 +15,16 @@ function tokenize( dateArg ) {
  * It uses overloaded getters and setters: Calling these methods without parameters acts as a getter,
  *  and calling them with a parameter acts as a setter.
  *
- * @param {InputDate} [dateArg] - Date
+ * @param {DateInput} [dateArg] - Date
  * @param {Intl.DateTimeFormatOptions['timeZone']} [timezoneArg] - timezone
  * @return {XBDate}
  */
-function createDate( dateArg, timezoneArg ) {
+export function createDate( dateArg, timezoneArg ) {
 	let date = dateArg != null ? new Date( dateArg ) : new Date();
-	let formatters = createFormaters( timezoneArg );
+	let formatters = createFormatters( 'en-US', timezoneArg );
 
 	return Object.freeze( {
+		_xb: 'xb-date',
 		get() {
 			// should I run any conversion here based on the provided timezone?
 			return date;
@@ -75,55 +37,55 @@ function createDate( dateArg, timezoneArg ) {
 				date.setFullYear( newYear );
 			}
 
-			return Number( formatters.year.format( date ) );
+			return Number( formatters[ 'Y-4' ]( date ) );
 		},
-		month(newMonth) {
+		month( newMonth ) {
 			// set month if newMonth is undefined, return the current month
-			if ( newMonth!== undefined ) {
-                date.setMonth( newMonth );
-            }
+			if ( newMonth !== undefined ) {
+				date.setMonth( newMonth );
+			}
 
 			// subtract 1 to be equivalent to the date.getMonth
-            return Number( formatters.month.format( date ) ) - 1;;
+			return Number( formatters[ 'M-2' ]( date ) ) - 1;
 		},
-		date(newDate) {
-			if ( newDate!== undefined ) {
-                date.setDate( newDate );
-            }
+		date( newDate ) {
+			if ( newDate !== undefined ) {
+				date.setDate( newDate );
+			}
 
-            return Number( formatters.day.format( date ) );
+			return Number( formatters[ 'D-2' ]( date ) );
 		},
 
 		weekday() {
-			return Number( formatters.weekday.format( date ) );
+			return Number( formatters[ 'D-index' ]( date ) );
 		},
-		hours(newHours) {
-			if ( newHours!== undefined ) {
-                date.setHours( newHours );
-            }
+		hours( newHours ) {
+			if ( newHours !== undefined ) {
+				date.setHours( newHours );
+			}
 
-            return Number( formatters.hour.format( date ) );
+			return Number( formatters[ 'h-2' ]( date ) );
 		},
-		minutes(newMinutes) {
-			if ( newMinutes!== undefined ) {
-                date.setMinutes( newMinutes );
-            }
+		minutes( newMinutes ) {
+			if ( newMinutes !== undefined ) {
+				date.setMinutes( newMinutes );
+			}
 
-            return Number( formatters.minute.format( date ) );
+			return Number( formatters[ 'm-2' ]( date ) );
 		},
-		seconds(newSeconds) {
-			if ( newSeconds!== undefined ) {
-                date.setSeconds( newSeconds );
-            }
+		seconds( newSeconds ) {
+			if ( newSeconds !== undefined ) {
+				date.setSeconds( newSeconds );
+			}
 
-            return Number( formatters.second.format( date ) );
+			return Number( formatters[ 's-2' ]( date ) );
 		},
-		milliseconds(newMilliseconds) {
-			if ( newMilliseconds!== undefined ) {
-                date.setMilliseconds( newMilliseconds );
-            }
+		milliseconds( newMilliseconds ) {
+			if ( newMilliseconds !== undefined ) {
+				date.setMilliseconds( newMilliseconds );
+			}
 
-            return Number( formatters.millisecond.format( date ) );
+			return Number( formatters[ 'ms-3' ]( date ) );
 		},
 		timezone( timezoneArg ) {
 			return createDate( date, timezoneArg );
@@ -151,87 +113,73 @@ function createDate( dateArg, timezoneArg ) {
 		reset( period ) {
 			switch ( period ) {
 				case 'start-of-day':
-					newValue.hours = 0;
-					newValue.minutes = 0;
-					newValue.seconds = 0;
-					newValue.milliseconds = 0;
+					set( {
+						hours: 0,
+						minutes: 0,
+						seconds: 0,
+						milliseconds: 0,
+					} );
 					break;
 				case 'middle-of-day':
-					newValue.hours = 12;
-					newValue.minutes = 0;
-					newValue.seconds = 0;
-					newValue.milliseconds = 0;
+					set( {
+						hours: 12,
+						minutes: 0,
+						seconds: 0,
+						milliseconds: 0,
+					} );
 					break;
 				case 'end-of-day':
-					newValue.hours = 23;
-					newValue.minutes = 59;
-					newValue.seconds = 59;
-					newValue.milliseconds = 999;
+					set( {
+						hours: 23,
+						minutes: 59,
+						seconds: 59,
+						milliseconds: 999,
+					} );
 					break;
-			}
-		},
-		set( overrides ) {
-			if ( overrides == null ) {
-				return this;
-			}
-
-			if ( overrides.year != null ) {
-				date.setFullYear( overrides.year );
-			}
-
-			if ( overrides.month != null ) {
-				date.setMonth( overrides.month );
-			}
-
-			if ( overrides.day != null ) {
-				date.setDate( overrides.day );
-			}
-
-			if ( overrides.hours != null ) {
-				date.setHours( overrides.hours );
-			}
-
-			if ( overrides.minutes != null ) {
-				date.setMinutes( overrides.minutes );
-			}
-
-			if ( overrides.seconds != null ) {
-				date.setSeconds( overrides.seconds );
-			}
-
-			if ( overrides.milliseconds != null ) {
-				date.setMilliseconds( overrides.milliseconds );
 			}
 
 			return this;
 		},
-		matches,
+		set( overrides ) {
+			if ( overrides != null ) {
+				set( overrides );
+			}
+
+			return this;
+		},
 		is( operator, otherDate, precision = 'day' ) {
 			if ( otherDate == null ) {
 				return false;
 			}
 
-			return matches( getReferenceRange() );
+			const constraints = createConstraints( getReferenceRange() );
+
+			return constraints.match( date, precision );
 
 			function getReferenceRange() {
 				switch ( operator ) {
 					case '<=':
+					case 'before.or.equal':
 						return [ null, otherDate ];
 					case '<':
+					case 'before':
 						const beforeOtherDate = otherDate.subtract( {
 							[ precision ]: 1,
 						} );
 
 						return [ null, beforeOtherDate ];
 					case '=':
-						return otherDate;
+					case 'equal':
+						return [ otherDate, otherDate ];
 					case '>':
+					case 'after':
 						const afterOtherDate = otherDate.add( {
 							[ precision ]: 1,
 						} );
 
 						return [ afterOtherDate, null ];
 					case '>=':
+					case 'after.or.equal':
 						return [ otherDate, null ];
 					default:
 						throw new InvalidComparisonOperatorError( operator );
@@ -270,109 +218,109 @@ function createDate( dateArg, timezoneArg ) {
 		newDate.setHours( newDate.getHours() + increment.hours );
 		newDate.setMinutes( newDate.getMinutes() + increment.minutes );
 		newDate.setSeconds( newDate.getSeconds() + increment.seconds );
-		newDate.setMilliseconds( newDate.getMilliseconds() + increment.milliseconds );
+		newDate.setMilliseconds(
+			newDate.getMilliseconds() + increment.milliseconds
+		);
 
 		return newDate;
 	}
 
-	function matches( ...constraintsArgs ) {
-		const constraints = XBDateConstraintFactory( ...constraintsArgs );
+	/**
+	 * @param {Record<DateUnit, number>} overrides
+	 * @returns {void}
+	 */
+	function set( overrides ) {
+		if ( overrides == null ) {
+			return;
+		}
 
-		return constraints.matches( date );
-	}
+		if ( overrides.year != null ) {
+			date.setFullYear( overrides.year );
+		}
 
-	function createFormaters( timezoneArg ) {
-		const timezome = timezoneArg != null ? { timeZone: timezoneArg } : {};
+		if ( overrides.month != null ) {
+			date.setMonth( overrides.month );
+		}
 
-		const yearFormatter = new Intl.DateTimeFormat( 'en', {
-			year: 'numeric',
-			...timezome,
-		} );
+		if ( overrides.day != null ) {
+			date.setDate( overrides.day );
+		}
 
-		const monthFormatter = new Intl.DateTimeFormat( 'en', {
-			month: '2-digit',
-			...timezome,
-		} );
+		if ( overrides.hours != null ) {
+			date.setHours( overrides.hours );
+		}
 
-		const dayFormatter = new Intl.DateTimeFormat( 'en', {
-			day: '2-digit',
-			...timezome,
-		} );
+		if ( overrides.minutes != null ) {
+			date.setMinutes( overrides.minutes );
+		}
 
-		const hourFormatter = new Intl.DateTimeFormat( 'en', {
-			hour: '2-digit',
-			hour12: false,
-			...timezome,
-		} );
+		if ( overrides.seconds != null ) {
+			date.setSeconds( overrides.seconds );
+		}
 
-		const minuteFormatter = new Intl.DateTimeFormat( 'en', {
-			minute: '2-digit',
-			...timezome,
-		} );
-		const secondFormatter = new Intl.DateTimeFormat( 'en', {
-			second: '2-digit',
-			...timezome,
-		} );
-		const millisecondFormatter = new Intl.DateTimeFormat( 'en', {
-			fractionalSecondDigits: '3',
-			...timezome,
-		} );
-
-		const weekdayFormatter = new Intl.DateTimeFormat( 'en', {
-			weekday: 'long',
-			...timezome,
-		} );
-
-		return {
-			year: yearFormatter,
-			month: monthFormatter,
-			day: dayFormatter,
-			hour: hourFormatter,
-			minute: minuteFormatter,
-			second: secondFormatter,
-			millisecond: millisecondFormatter,
-			weekday( date ) {
-				const map = {
-					Sunday: 0,
-					Monday: 1,
-					Tuesday: 2,
-					Wednesday: 3,
-					Thursday: 4,
-					Friday: 5,
-					Saturday: 6,
-				};
-
-				return map[ weekdayFormatter.format( date ) ];
-			},
-		};
+		if ( overrides.milliseconds != null ) {
+			date.setMilliseconds( overrides.milliseconds );
+		}
 	}
 }
 
 /**
- *
- * @param {{startDate?: InputDate; endDate?: InputDate}} rangeArg
- * @param {*} optionsArg
+ * @param {DateRangeConstraintEvaluator} rangeArg
+ * @returns {XBDateRange}
  */
-function createDateRange( rangeArg, optionsArg ) {
-	const range = toRange( rangeArg, optionsArg );
+export function createDateRange( rangeArg ) {
+	let [ rangeStart, rangeEnd ] = toRange( rangeArg, 'strict' ).map(
+		( timestamp ) => {
+			return timestamp == null ? timestamp : createDate( timestamp );
+		}
+	);
 
 	return Object.freeze( {
-		matches: getRangeEvaluator( range ),
+		_xb: 'xb-date-range',
+		start( newRangeStart ) {
+			if ( newRangeStart !== undefined ) {
+				rangeStart = createDate( newRangeStart );
+
+				adjustDateRangeOrder();
+			}
+
+			return rangeStart;
+		},
+		end( newRangeEnd ) {
+			if ( newRangeEnd !== undefined ) {
+				rangeEnd = createDate( newRangeEnd );
+
+				adjustDateRangeOrder();
+			}
+
+			return rangeEnd;
+		},
+		toString() {
+			return `${ rangeStart?.toString() ?? '' } - ${
+				rangeEnd?.toString() ?? ''
+			}`;
+		},
 	} );
+
+	/**
+	 * Adjust the order of the date range, swapping the dates if
+	 * the start date is after the end date.
+	 */
+	function adjustDateRangeOrder() {
+		if ( rangeStart == null || rangeEnd == null ) {
+			return;
+		}
+
+		if ( rangeStart.getTime() > rangeEnd.getTime() ) {
+			[ rangeStart, rangeEnd ] = [ rangeEnd, rangeStart ];
+		}
+	}
 }
 
-const XBDateFactory = Object.freeze( { createDate, createDateRange } );
-
-export default XBDateFactory;
-
 /**
- * @typedef {import('./types').XBCreateDateOptions} XBCreateDateOptions
- * @typedef {import('./types').DateUnit} DateUnit
- * @typedef {import('./types').InputDate} InputDate
- * @typedef {import('./types').SingleDateConstraint} SingleDateConstraint
- * @typedef {import('./types').DateRangeConstraint} DateRangeConstraint
- * @typedef {import('./types').FunctionDateConstraint} FunctionDateConstraint
- * @typedef {import('./types').DateConstraint} DateConstraint
- * @typedef {import('./types').DateOperationInput} DateOperationInput
+ * @typedef {import('./types').DateInput} DateInput
  * @typedef {import('./types').XBDate} XBDate
+ * @typedef {import('./types').XBDateRange} XBDateRange
+ * @typedef {import('./types').DateRangeConstraintEvaluator} DateRangeConstraintEvaluator
+ *
  */

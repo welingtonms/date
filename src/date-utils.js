@@ -1,56 +1,74 @@
-// import { getFormattedOffset } from './timezone-utils';
 import { MAX_SUPPORTED_DATE, MIN_SUPPORTED_DATE } from './constants';
-
-/** @type {XBCreateDateOptions} */
-export const DEFAULT_OPTIONS = {
-	normalize: true,
-};
+import { InvalidDateRangeError } from './errors';
 
 /**
+ * Calculates the precise number of years, months, days, hours, minutes, seconds, and milliseconds
+ * since the epoch (January 1, 1970, UTC) for the given timestamp.
  *
- * @param {XBCreateDateOptions} [optionsArg] - Additional options
+ * @param {number} timestamp - The timestamp value representing a date and time.
+ * @returns {Record<DateUnit, number>} An object containing the precise differences in years, months, days, hours,
+ *                   minutes, seconds, and milliseconds since the epoch.
+ *                   Example: { years: 51, months: 4, days: 21, hours: 9, minutes: 39, seconds: 17, milliseconds: 123 }
  */
-function getOptions( optionsArg ) {
-	return { ...DEFAULT_OPTIONS, ...optionsArg };
+export function getTimestampComponents( timestamp ) {
+	const date = new Date( timestamp );
+	const epoch = new Date( 0 ); // January 1, 1970, UTC
+
+	const year = date.getUTCFullYear() - epoch.getUTCFullYear();
+	const month = date.getUTCMonth() - epoch.getUTCMonth();
+	const day = date.getUTCDate() - epoch.getUTCDate();
+	const hours = date.getUTCHours() - epoch.getUTCHours();
+	const minutes = date.getUTCMinutes() - epoch.getUTCMinutes();
+	const seconds = date.getUTCSeconds() - epoch.getUTCSeconds();
+	const milliseconds = date.getUTCMilliseconds() - epoch.getUTCMilliseconds();
+
+	return { year, month, day, hours, minutes, seconds, milliseconds };
 }
 
 /**
- *
- * @param {InputDate} dateArg
+ * Approximate the timestamp of the given `date` to the provided `precision`.
+ * @param {XBDate} date
+ * @param {DateUnit} precision
+ * @returns {number}
  */
-export function toUTC( dateArg ) {
-	const date = dateArg != null ? new Date( dateArg ) : new Date();
+export function getTimestampByPrecision( date, precision = 'milliseconds' ) {
+	const MILLISECONDS_PER = {
+		year: 3155695200000, // Approximation ignoring leap years
+		month: 2592000000, // Approximation assuming 30-day months
+		day: 86400000,
+		hours: 3600000,
+		minutes: 60000,
+		seconds: 1000,
+		milliseconds: 1,
+	};
 
-	// create a date with local timezone based on the UTC input date
-	const utcDate = new Date(
-		Date.UTC(
-			date.getUTCFullYear(),
-			date.getUTCMonth(),
-			date.getUTCDate(),
-			date.getUTCHours(),
-			date.getUTCMinutes(),
-			date.getUTCSeconds(),
-			date.getUTCMilliseconds()
-		)
-	);
+	const timestampComponents = getTimestampComponents( date );
 
-	return utcDate;
-}
+	let timestampByPrecision = 0;
 
-/**
- *
- * @param {InputDate} dateArg
- */
-export function normalizeToUTC( dateArg ) {
-	dateArg//?
-	const date = dateArg != null ? new Date( dateArg ) : new Date();
+	// assuming entries will be in insertion order: years, months, days, hours, minutes, seconds, and milliseconds
+	const entries = Array.from( Object.entries( timestampComponents ) );
+	let done = false;
+	for ( let i = 0; i < entries.length && ! done; i++ ) {
+		const [ period, value ] = entries[ i ];
+		timestampByPrecision += value * MILLISECONDS_PER[ period ];
 
-	return toUTC( date );
+		if ( period === precision ) {
+			done = true;
+		}
+	}
+
+	return timestampByPrecision;
 }
 
 /**
  * Constraints represent ranges of dates, inclusive in both ends.
  * Returns an array representing the initial and final timestamps (after the transformations applied by `XBDateFactory`).
+ *
+ * Modes:
+ * * `strict`: will keep the `null` value for the start/end range
+ * * `comparison`: will replace the `null` value for the start range with the `MIN_SUPPORTED_DATE`,
+ *                and the `null` value for the end range with the `MAX_SUPPORTED_DATE.
  *
  * @example
  * ```js
@@ -72,93 +90,87 @@ export function normalizeToUTC( dateArg ) {
  * toRange([null, 1643371200000]) // returns [`MIN_SUPPORTED_DATE`, 1643371200000]
  * toRange([null, '2022-01-28T12:00:00.000Z']) // returns [`MIN_SUPPORTED_DATE`, 1643371200000]
  * ```
- * @param {} range
- * @param {*} optionsArg
- * @returns {[ number, number ]}
+ * @param {DateRangeConstraintEvaluator | DateInput | XBDate | null} rangeArg
+ * @param {'strict' | 'comparison'} mode
+ * @returns {[ number | null, number | null]}
  */
-export function toRange( range, optionsArg ) {
-	if ( ! Array.isArray( range ) ) {
-		const timestamp = range.getTime();
+export function toRange( rangeArg, mode ) {
+	let [ rangeStart, rangeEnd ] = (
+		Array.isArray( rangeArg ) ? rangeArg : [ rangeArg, rangeArg ]
+	 )
+		.map( normalizeDate )
+		.sort( ( a, b ) => {
+			return (
+				( a?.getTime() ?? MAX_SUPPORTED_DATE ) -
+				( b?.getTime() ?? MIN_SUPPORTED_DATE )
+			);
+		} );
 
-		return [ timestamp, timestamp ];
+	return [
+		rangeStart?.getTime() ??
+			( mode == 'comparison' ? MIN_SUPPORTED_DATE : null ),
+		rangeEnd?.getTime() ??
+			( mode == 'comparison' ? MAX_SUPPORTED_DATE : null ),
+	];
+}
+
+/**
+ * Convert the given value into a date.
+ * @param {DateInput | XBDate | null} [date]
+ * @returns {Date | null}
+ */
+export function normalizeDate( date ) {
+	if ( date == null ) {
+		return null;
 	}
 
-	const rangeStart =
-		range[ 0 ] != null
-			? normalizeToUTC( range[ 0 ], optionsArg ).getTime()
-			: MIN_SUPPORTED_DATE;
-	const rangeEnd =
-		range[ 1 ] != null
-			? normalizeToUTC( range[ 1 ], optionsArg ).getTime()
-			: MAX_SUPPORTED_DATE;
-
-	if ( rangeStart > rangeEnd ) {
-		throw new InvalidDateRangeError( [ rangeStart, rangeEnd ] );
+	if ( typeof date === 'number' || typeof date === 'string' ) {
+		return new Date( date );
 	}
 
-	return [ rangeStart, rangeEnd ];
+	if ( typeof date === 'object' && date._xb == 'xb-date' ) {
+		return date.get();
+	}
+
+	// at this point, we assume it's already a date (date instanceof Date).
+	return date;
 }
 
 /**
  * Wrap range into a function.
- * @param {} range - date range to be evaluated.
- * @returns {}
+ * @param {DateRangeConstraintEvaluator | DateInput | XBDate | null} rangeArg
+ * @param {DateUnit} [precision]
+ * @returns {(day: XBDate) => boolean}
  */
-export function getRangeEvaluator( range ) {
+export function getRangeEvaluator( rangeArg, precision = 'milliseconds' ) {
 	// we get a normalized range so it's easier to perform the comparison.
-	const [ start, end ] = toRange( range );
+	const [ rangeStart, rangeEng ] = toRange( rangeArg, 'comparison' );
 
 	/**
 	 * @param {XBDate} day
 	 * @returns {boolean}
 	 */
 	function matches( day ) {
-		if ( start > end ) {
-			throw new InvalidDateRangeError( [ start, end ] );
+		if ( rangeStart > rangeEng ) {
+			throw new InvalidDateRangeError( [
+				rangeStart.toString(),
+				rangeEng.toString(),
+			] );
 		}
 
-		return start <= day.getTime() && day.getTime() <= end;
+		const timestampStart = getTimestampByPrecision( rangeStart, precision );
+		const timestampEnd = getTimestampByPrecision( rangeEng, precision );
+		const timestamp = getTimestampByPrecision( day, precision );
+
+		return timestampStart <= timestamp && timestamp <= timestampEnd;
 	}
 
 	return matches;
 }
 
 /**
- * @typedef {import('./types').XBDateCreateOptions} XBDateCreateOptions
+ * @typedef {import('./types').DateRangeConstraintEvaluator} DateRangeConstraintEvaluator
  * @typedef {import('./types').DateUnit} DateUnit
- * @typedef {import('./types').InputDate} InputDate
- * @typedef {import('./types').SingleDateConstraint} SingleDateConstraint
- * @typedef {import('./types').DateRangeConstraint} DateRangeConstraint
- * @typedef {import('./types').FunctionDateConstraint} FunctionDateConstraint
- * @typedef {import('./types').DateConstraint} DateConstraint
- * @typedef {import('./types').DateOperationInput} DateOperationInput
+ * @typedef {import('./types').DateInput} DateInput
  * @typedef {import('./types').XBDate} XBDate
  */
-
-/**
- *
- * @param {string} dateArg
- * @param {string} timezoneArg
- */
-// export function getISODate( dateArg, timezoneArg ) {
-// 	if ( ! dateArg || typeof dateArg !== 'string' ) {
-// 		return null;
-// 	}
-
-// 	//YYYY-MM-DDTHH:mm:ss.sss+00:00
-// 	const year = dateArg.slice( 0, 4 );
-// 	const month = dateArg.slice( 5, 7 );
-// 	const day = dateArg.slice( 8, 10 );
-// 	const hours = dateArg.slice( 11, 13 ) || '12';
-// 	const minutes = dateArg.slice( 14, 16 ) || '00';
-// 	const seconds = dateArg.slice( 17, 19 ) || '00';
-// 	const milliseconds = dateArg.slice( 20, 23 ) || '000';
-// 	const timezone = dateArg.slice( 23 ) || 'Z'; //?
-
-// 	getFormattedOffset(timezone)//?
-
-// 	return '';
-// }
-
-// JSON.stringify( f( '1995-12-17T03:24:00', 'America/Sao_Paulo' ) ); //?
-// 1995-12-17T03:24:00.000-03:00
