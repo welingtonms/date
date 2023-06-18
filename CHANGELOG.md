@@ -1,3 +1,10 @@
+# [2.0.0-beta.1](https://github.com/welingtonms/xb-date/compare/v1.0.2...v2.0.0-beta.1) (2023-06-18)
+
+
+### Features
+
+* date factory refactor ([#4](https://github.com/welingtonms/xb-date/issues/4)) ([196a4d4](https://github.com/welingtonms/xb-date/commit/196a4d46440bd693581f155ccdc6e78dbc9fb751))
+
 ## [1.0.2](https://github.com/welingtonms/xb-date/compare/v1.0.1...v1.0.2) (2023-02-16)
 
 
