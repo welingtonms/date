@@ -1,216 +1,326 @@
-import { getConstraintEvaluator } from './date-constraints';
-import isEmpty from './is-empty';
-
-/** @type {XBDateFactoryOptions} */
-export const DEFAULT_OPTIONS = {
-	normalize: true,
-};
+import { createFormatters } from './formatter-utils';
+import { InvalidComparisonOperatorError } from './errors';
+import { toRange } from './date-utils';
+import { createConstraints } from './constraints-factory';
 
 /**
  * Ideally, follow the date/time string formats:
+ * * 567432000000
  * * `YYYY-MM-DD`
  * * `YYYY-MM-DDTHH:mm:ss.sssZ`
  * * `YYYY-MM-DDTHH:mm:ss.sss+00:00`
  *
  * `dateArg` is expected to have timezone information or to be UTC.
  *
- * By default, we normalize the input date to 12:00:00 (UTC); this simplifies comparison of dates; be mindful
- * of this when using this helper for time relate logic.
- * You can disable this behavior by passing `options.normalize: false`.
+ * It uses overloaded getters and setters: Calling these methods without parameters acts as a getter,
+ *  and calling them with a parameter acts as a setter.
  *
- * @param {InputDate} [dateArg] - Date
+ * @param {DateInput} [dateArg] - Date
+ * @param {Intl.DateTimeFormatOptions['timeZone']} [timezoneArg] - timezone
  * @return {XBDate}
  */
-function XBDateFactory( dateArg, optionsArg = DEFAULT_OPTIONS ) {
-	const options = { ...DEFAULT_OPTIONS, ...optionsArg };
+export function createDate( dateArg, timezoneArg ) {
+	let date = dateArg != null ? new Date( dateArg ) : new Date();
+	let formatters = createFormatters( 'en-US', timezoneArg );
 
-	const utcDate = ( function normalizeToUTC() {
-		let date = new Date();
-
-		if ( dateArg != null ) {
-			date = new Date( dateArg );
-		}
-
-		// create a date with local timezone based on the UTC input date
-		const utcDate = new Date(
-			Date.UTC(
-				date.getUTCFullYear(),
-				date.getUTCMonth(),
-				date.getUTCDate(),
-				options.normalize ? 12 : date.getUTCHours(),
-				options.normalize ? 0 : date.getUTCMinutes(),
-				options.normalize ? 0 : date.getUTCSeconds(),
-				options.normalize ? 0 : date.getUTCMilliseconds()
-			)
-		);
-
-		return utcDate;
-	} )();
-
-	return {
+	return Object.freeze( {
+		_xb: 'xb-date',
 		get() {
-			return utcDate;
-		},
-		getYear() {
-			return utcDate.getUTCFullYear();
-		},
-		getMonth() {
-			return utcDate.getUTCMonth();
-		},
-		getDate() {
-			return utcDate.getUTCDate();
+			// should I run any conversion here based on the provided timezone?
+			return date;
 		},
 		getTime() {
-			return utcDate.getTime();
+			return date.getTime();
 		},
-		getWeekday() {
-			return utcDate.getUTCDay();
+		year( newYear ) {
+			if ( newYear !== undefined ) {
+				date.setFullYear( newYear );
+			}
+
+			return Number( formatters[ '%4Y' ]( date ) );
 		},
-		getHours() {
-			return utcDate.getUTCHours();
+		month( newMonth ) {
+			// set month if newMonth is undefined, return the current month
+			if ( newMonth !== undefined ) {
+				date.setMonth( newMonth );
+			}
+
+			// subtract 1 to be equivalent to the date.getMonth
+			return Number( formatters[ '%2M' ]( date ) ) - 1;
 		},
-		getMinutes() {
-			return utcDate.getUTCMinutes();
+		date( newDate ) {
+			if ( newDate !== undefined ) {
+				date.setDate( newDate );
+			}
+
+			return Number( formatters[ '%02D' ]( date ) );
 		},
-		getSeconds() {
-			return utcDate.getUTCSeconds();
+
+		weekday() {
+			return Number( formatters[ '%iD' ]( date ) );
+		},
+		hours( newHours ) {
+			if ( newHours !== undefined ) {
+				date.setHours( newHours );
+			}
+
+			return Number( formatters[ '%02h' ]( date ) );
+		},
+		minutes( newMinutes ) {
+			if ( newMinutes !== undefined ) {
+				date.setMinutes( newMinutes );
+			}
+
+			return Number( formatters[ '%02m' ]( date ) );
+		},
+		seconds( newSeconds ) {
+			if ( newSeconds !== undefined ) {
+				date.setSeconds( newSeconds );
+			}
+
+			return Number( formatters[ '%02s' ]( date ) );
+		},
+		milliseconds( newMilliseconds ) {
+			if ( newMilliseconds !== undefined ) {
+				date.setMilliseconds( newMilliseconds );
+			}
+
+			return Number( formatters[ '%03ms' ]( date ) );
+		},
+		timezone( timezoneArg ) {
+			return createDate( date, timezoneArg );
 		},
 		add( summands ) {
-			const result = Object.keys( summands || [] ).reduce(
-				( newDate, key ) => {
-					return add( newDate, key, summands[ key ] );
+			const result = Object.entries( summands || [] ).reduce(
+				( newDate, [ key, summand ] ) => {
+					return add( newDate, key, summand );
 				},
-				utcDate
+				date
 			);
 
-			return result;
+			return createDate( result );
 		},
 		subtract( subtrahends ) {
-			const result = Object.keys( subtrahends || [] ).reduce(
-				( newDate, key ) => {
-					return add( newDate, key, -1 * subtrahends[ key ] );
+			const result = Object.entries( subtrahends || [] ).reduce(
+				( newDate, [ key, subtrahend ] ) => {
+					return add( newDate, key, -1 * subtrahend );
 				},
-				utcDate
+				date
 			);
 
-			return result;
+			return createDate( result );
 		},
-		set( values ) {
-			const newValue = {
-				year: utcDate.getUTCFullYear(),
-				month: utcDate.getUTCMonth(),
-				day: utcDate.getUTCDate(),
-				...( values || {} ),
-			};
-
-			utcDate.setUTCFullYear( newValue.year );
-			utcDate.setUTCMonth( newValue.month );
-			utcDate.setUTCDate( newValue.day );
+		reset( period ) {
+			switch ( period ) {
+				case 'start-of-day':
+					set( {
+						hours: 0,
+						minutes: 0,
+						seconds: 0,
+						milliseconds: 0,
+					} );
+					break;
+				case 'middle-of-day':
+					set( {
+						hours: 12,
+						minutes: 0,
+						seconds: 0,
+						milliseconds: 0,
+					} );
+					break;
+				case 'end-of-day':
+					set( {
+						hours: 23,
+						minutes: 59,
+						seconds: 59,
+						milliseconds: 999,
+					} );
+					break;
+			}
 
 			return this;
 		},
-		matches( ...constraints ) {
-			if ( isEmpty( constraints ) ) {
-				return false;
+		set( overrides ) {
+			if ( overrides != null ) {
+				set( overrides );
 			}
 
-			const constraintEvaluators = constraints.map(
-				getConstraintEvaluator
-			);
-			const date = XBDateFactory( utcDate );
-
-			return constraintEvaluators.some( ( evaluator ) => {
-				return evaluator( date );
-			} );
+			return this;
 		},
 		is( operator, otherDate, precision = 'day' ) {
 			if ( otherDate == null ) {
 				return false;
 			}
 
-			const referenceRange = ( function getReferenceRange() {
+			const constraints = createConstraints( getReferenceRange() );
+
+			return constraints.match( date, precision );
+
+			function getReferenceRange() {
 				switch ( operator ) {
 					case '<=':
+					case 'before.or.equal':
 						return [ null, otherDate ];
 					case '<':
+					case 'before':
 						const beforeOtherDate = otherDate.subtract( {
 							[ precision ]: 1,
 						} );
 
 						return [ null, beforeOtherDate ];
 					case '=':
-						return otherDate;
+					case 'equal':
+						return [ otherDate, otherDate ];
 					case '>':
+					case 'after':
 						const afterOtherDate = otherDate.add( {
 							[ precision ]: 1,
 						} );
 
 						return [ afterOtherDate, null ];
 					case '>=':
+					case 'after.or.equal':
 						return [ otherDate, null ];
 					default:
 						throw new InvalidComparisonOperatorError( operator );
 				}
-			} )();
-
-			return this.matches( referenceRange );
+			}
 		},
 		toString() {
-			return utcDate.toISOString();
+			return date.toISOString();
 		},
-	};
-}
+	} );
 
-/**
- * Add the given `value` to the provided `key` of the provided `date`.
- * @param {Date} date - Date where the operation should be performed.
- * @param {DateUnit} unit - period
- * @param {number} value - value to be added
- * @returns {XBDate} new date after the operation.
- */
-function add( date, unit, value ) {
-	const increment = {
-		year: 0,
-		month: 0,
-		day: 0,
-		[ unit ]: value,
-	};
-
-	const newDate = new Date(
-		date.getUTCFullYear() + increment.year,
-		date.getUTCMonth() + increment.month,
-		date.getUTCDate() + increment.day,
-		date.getUTCHours(),
-		date.getUTCMinutes(),
-		date.getUTCSeconds(),
-		date.getUTCMilliseconds()
-	);
-
-	return XBDateFactory( newDate );
-}
-
-export class InvalidComparisonOperatorError extends Error {
 	/**
-	 * @constructor
-	 * @param {string} operator
+	 * Add the given `value` to the provided `key` of the provided `date`.
+	 * @param {Date} date - Date where the operation should be performed.
+	 * @param {DateUnit} unit - period
+	 * @param {number} value - value to be added
+	 * @returns {XBDate} new date after the operation.
 	 */
-	constructor( operator ) {
-		super(
-			`Invalid comparison operator: ${ operator }; only >=, >, =, < , and <= are accepted.`
+	function add( date, unit, value ) {
+		const increment = {
+			year: 0,
+			month: 0,
+			day: 0,
+			hours: 0,
+			minutes: 0,
+			seconds: 0,
+			milliseconds: 0,
+			[ unit ]: value,
+		};
+
+		const newDate = new Date( date );
+
+		newDate.setFullYear( newDate.getFullYear() + increment.year );
+		newDate.setMonth( newDate.getMonth() + increment.month );
+		newDate.setDate( newDate.getDate() + increment.day );
+		newDate.setHours( newDate.getHours() + increment.hours );
+		newDate.setMinutes( newDate.getMinutes() + increment.minutes );
+		newDate.setSeconds( newDate.getSeconds() + increment.seconds );
+		newDate.setMilliseconds(
+			newDate.getMilliseconds() + increment.milliseconds
 		);
+
+		return newDate;
+	}
+
+	/**
+	 * @param {Record<DateUnit, number>} overrides
+	 * @returns {void}
+	 */
+	function set( overrides ) {
+		if ( overrides == null ) {
+			return;
+		}
+
+		if ( overrides.year != null ) {
+			date.setFullYear( overrides.year );
+		}
+
+		if ( overrides.month != null ) {
+			date.setMonth( overrides.month );
+		}
+
+		if ( overrides.day != null ) {
+			date.setDate( overrides.day );
+		}
+
+		if ( overrides.hours != null ) {
+			date.setHours( overrides.hours );
+		}
+
+		if ( overrides.minutes != null ) {
+			date.setMinutes( overrides.minutes );
+		}
+
+		if ( overrides.seconds != null ) {
+			date.setSeconds( overrides.seconds );
+		}
+
+		if ( overrides.milliseconds != null ) {
+			date.setMilliseconds( overrides.milliseconds );
+		}
 	}
 }
 
-export default XBDateFactory;
+/**
+ * @param {DateRangeConstraintEvaluator} rangeArg
+ * @returns {XBDateRange}
+ */
+export function createDateRange( rangeArg ) {
+	let [ rangeStart, rangeEnd ] = toRange( rangeArg, 'strict' ).map(
+		( timestamp ) => {
+			return timestamp == null ? timestamp : createDate( timestamp );
+		}
+	);
+
+	return Object.freeze( {
+		_xb: 'xb-date-range',
+		start( newRangeStart ) {
+			if ( newRangeStart !== undefined ) {
+				rangeStart = createDate( newRangeStart );
+
+				adjustDateRangeOrder();
+			}
+
+			return rangeStart;
+		},
+		end( newRangeEnd ) {
+			if ( newRangeEnd !== undefined ) {
+				rangeEnd = createDate( newRangeEnd );
+
+				adjustDateRangeOrder();
+			}
+
+			return rangeEnd;
+		},
+		toString() {
+			return `${ rangeStart?.toString() ?? '' } - ${
+				rangeEnd?.toString() ?? ''
+			}`;
+		},
+	} );
+
+	/**
+	 * Adjust the order of the date range, swapping the dates if
+	 * the start date is after the end date.
+	 */
+	function adjustDateRangeOrder() {
+		if ( rangeStart == null || rangeEnd == null ) {
+			return;
+		}
+
+		if ( rangeStart.getTime() > rangeEnd.getTime() ) {
+			[ rangeStart, rangeEnd ] = [ rangeEnd, rangeStart ];
+		}
+	}
+}
 
 /**
- * @typedef {import('./types').XBDateFactoryOptions} XBDateFactoryOptions
- * @typedef {import('./types').DateUnit} DateUnit
- * @typedef {import('./types').InputDate} InputDate
- * @typedef {import('./types').SingleDateConstraint} SingleDateConstraint
- * @typedef {import('./types').DateRangeConstraint} DateRangeConstraint
- * @typedef {import('./types').FunctionDateConstraint} FunctionDateConstraint
- * @typedef {import('./types').DateConstraint} DateConstraint
- * @typedef {import('./types').DateOperationInput} DateOperationInput
+ * @typedef {import('./types').DateInput} DateInput
  * @typedef {import('./types').XBDate} XBDate
+ * @typedef {import('./types').XBDateRange} XBDateRange
+ * @typedef {import('./types').DateRangeConstraintEvaluator} DateRangeConstraintEvaluator
+ *
  */
