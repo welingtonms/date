@@ -37,7 +37,7 @@ export function createDate( dateArg, timezoneArg ) {
 				date.setFullYear( newYear );
 			}
 
-			return Number( formatters[ 'Y-4' ]( date ) );
+			return Number( formatters[ '%4Y' ]( date ) );
 		},
 		month( newMonth ) {
 			// set month if newMonth is undefined, return the current month
@@ -46,46 +46,46 @@ export function createDate( dateArg, timezoneArg ) {
 			}
 
 			// subtract 1 to be equivalent to the date.getMonth
-			return Number( formatters[ 'M-2' ]( date ) ) - 1;
+			return Number( formatters[ '%2M' ]( date ) ) - 1;
 		},
 		date( newDate ) {
 			if ( newDate !== undefined ) {
 				date.setDate( newDate );
 			}
 
-			return Number( formatters[ 'D-2' ]( date ) );
+			return Number( formatters[ '%02D' ]( date ) );
 		},
 
 		weekday() {
-			return Number( formatters[ 'D-index' ]( date ) );
+			return Number( formatters[ '%iD' ]( date ) );
 		},
 		hours( newHours ) {
 			if ( newHours !== undefined ) {
 				date.setHours( newHours );
 			}
 
-			return Number( formatters[ 'h-2' ]( date ) );
+			return Number( formatters[ '%02h' ]( date ) );
 		},
 		minutes( newMinutes ) {
 			if ( newMinutes !== undefined ) {
 				date.setMinutes( newMinutes );
 			}
 
-			return Number( formatters[ 'm-2' ]( date ) );
+			return Number( formatters[ '%02m' ]( date ) );
 		},
 		seconds( newSeconds ) {
 			if ( newSeconds !== undefined ) {
 				date.setSeconds( newSeconds );
 			}
 
-			return Number( formatters[ 's-2' ]( date ) );
+			return Number( formatters[ '%02s' ]( date ) );
 		},
 		milliseconds( newMilliseconds ) {
 			if ( newMilliseconds !== undefined ) {
 				date.setMilliseconds( newMilliseconds );
 			}
 
-			return Number( formatters[ 'ms-3' ]( date ) );
+			return Number( formatters[ '%03ms' ]( date ) );
 		},
 		timezone( timezoneArg ) {
 			return createDate( date, timezoneArg );

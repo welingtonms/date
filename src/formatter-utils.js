@@ -1,90 +1,91 @@
 import { padded } from './utils';
 
 const ADDITIONAL_FORMATTERS = {
-	'Y-2': ( value ) => value.slice( -2 ),
-	'D-index': ( date ) => date.getDay(),
-	'm-2': ( value ) => padded( value, 2 ),
-	's-2': ( value ) => padded( value, 2 ),
-	'ms-3': ( value ) => padded( value, 3 ),
-	'a-upper': ( value ) => value.split( /\s/ )[ 1 ].toUpperCase(),
-	'a-lower': ( value ) => value.split( /\s/ )[ 1 ].toLowerCase(),
+	'%2Y': ( value ) => value.slice( -2 ),
+	'%iD': ( date ) => date.getDay(),
+	'%02m': ( value ) => padded( value, 2 ),
+	'%02s': ( value ) => padded( value, 2 ),
+	'%03ms': ( value ) => padded( value, 3 ),
+	'%uA': ( value ) => value.split( /\s/ )[ 1 ].toUpperCase(),
+	'%lA': ( value ) => value.split( /\s/ )[ 1 ].toLowerCase(),
 };
 
 export function createFormatters( localesArg = 'default', timezoneArg ) {
 	const timezome = timezoneArg != null ? { timeZone: timezoneArg } : {};
 
+	//%[flags][width][.precision][length]specifier
 	const DEFAULT_FORMATTERS = {
-		'Y-4': new Intl.DateTimeFormat( localesArg, {
+		'%4Y': new Intl.DateTimeFormat( localesArg, {
 			year: 'numeric',
 			...timezome,
 		} ),
-		'Y-2': new Intl.DateTimeFormat( localesArg, {
+		'%2Y': new Intl.DateTimeFormat( localesArg, {
 			year: 'numeric',
 			...timezome,
 		} ),
-		'M-long': new Intl.DateTimeFormat( localesArg, {
+		'%lM': new Intl.DateTimeFormat( localesArg, {
 			month: 'long',
 			...timezome,
 		} ),
-		'M-short': new Intl.DateTimeFormat( localesArg, {
+		'%sM': new Intl.DateTimeFormat( localesArg, {
 			month: 'short',
 			...timezome,
 		} ),
-		'M-2': new Intl.DateTimeFormat( localesArg, {
+		'%2M': new Intl.DateTimeFormat( localesArg, {
 			month: '2-digit',
 			...timezome,
 		} ),
-		M: new Intl.DateTimeFormat( localesArg, {
+		'%M': new Intl.DateTimeFormat( localesArg, {
 			month: 'numeric',
 			...timezome,
 		} ),
-		'D-long': new Intl.DateTimeFormat( localesArg, {
+		'%lD': new Intl.DateTimeFormat( localesArg, {
 			weekday: 'long',
 			...timezome,
 		} ),
-		'D-short': new Intl.DateTimeFormat( localesArg, {
+		'%sD': new Intl.DateTimeFormat( localesArg, {
 			weekday: 'short',
 			...timezome,
 		} ),
-		'D-2': new Intl.DateTimeFormat( localesArg, {
+		'%02D': new Intl.DateTimeFormat( localesArg, {
 			day: '2-digit',
 			...timezome,
 		} ),
-		'D-1': new Intl.DateTimeFormat( localesArg, {
+		'%D': new Intl.DateTimeFormat( localesArg, {
 			day: 'numeric',
 			...timezome,
 		} ),
-		'h-2': new Intl.DateTimeFormat( localesArg, {
+		'%02h': new Intl.DateTimeFormat( localesArg, {
 			hour: '2-digit',
 			hour12: false,
 			...timezome,
 		} ),
-		'h-1': new Intl.DateTimeFormat( localesArg, {
+		'%h': new Intl.DateTimeFormat( localesArg, {
 			hour: 'numeric',
 			...timezome,
 		} ),
-		'm-2': new Intl.DateTimeFormat( localesArg, {
+		'%02m': new Intl.DateTimeFormat( localesArg, {
 			minute: '2-digit',
 			...timezome,
 		} ),
-		'm-1': new Intl.DateTimeFormat( localesArg, {
+		'%m': new Intl.DateTimeFormat( localesArg, {
 			minute: 'numeric',
 			...timezome,
 		} ),
-		's-2': new Intl.DateTimeFormat( localesArg, {
+		'%02s': new Intl.DateTimeFormat( localesArg, {
 			second: '2-digit',
 			...timezome,
 		} ),
-		's-1': new Intl.DateTimeFormat( localesArg, {
+		'%s': new Intl.DateTimeFormat( localesArg, {
 			second: 'numeric',
 			...timezome,
 		} ),
-		'ms-3': new Intl.DateTimeFormat( localesArg, {
+		'%03ms': new Intl.DateTimeFormat( localesArg, {
 			fractionalSecondDigits: 3,
 			hour12: false,
 			...timezome,
 		} ),
-		'ms-1': new Intl.DateTimeFormat( localesArg, {
+		'%ms': new Intl.DateTimeFormat( localesArg, {
 			fractionalSecondDigits: 3,
 			hour12: false,
 			...timezome,
@@ -93,11 +94,11 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 			timeZoneName: 'short',
 			...timezome,
 		} ),
-		'a-upper': new Intl.DateTimeFormat( localesArg, {
+		'%uA': new Intl.DateTimeFormat( localesArg, {
 			hour: '2-digit',
 			hour12: true,
 		} ),
-		'a-lower': new Intl.DateTimeFormat( localesArg, {
+		'%lA': new Intl.DateTimeFormat( localesArg, {
 			hour: '2-digit',
 			hour12: true,
 		} ),
@@ -109,17 +110,17 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		'Y-4'( date ) {
-			return DEFAULT_FORMATTERS[ 'Y-4' ].format( date );
+		'%4Y'( date ) {
+			return DEFAULT_FORMATTERS[ '%4Y' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'Y-2'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'Y-2' ](
-				DEFAULT_FORMATTERS[ 'Y-2' ].format( date )
+		'%2Y'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%2Y' ](
+				DEFAULT_FORMATTERS[ '%2Y' ].format( date )
 			);
 		},
 		/**
@@ -127,31 +128,31 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		'M-long'( date ) {
-			return DEFAULT_FORMATTERS[ 'M-long' ].format( date );
+		'%lM'( date ) {
+			return DEFAULT_FORMATTERS[ '%lM' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'M-short'( date ) {
-			return DEFAULT_FORMATTERS[ 'M-short' ].format( date );
+		'%sM'( date ) {
+			return DEFAULT_FORMATTERS[ '%sM' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'M-2'( date ) {
-			return DEFAULT_FORMATTERS[ 'M-2' ].format( date );
+		'%2M'( date ) {
+			return DEFAULT_FORMATTERS[ '%2M' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		M( date ) {
+		'%M'( date ) {
 			return DEFAULT_FORMATTERS[ 'M' ].format( date );
 		},
 		/**
@@ -159,23 +160,23 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		'D-long'( date ) {
-			return DEFAULT_FORMATTERS[ 'D-long' ].format( date );
+		'%lD'( date ) {
+			return DEFAULT_FORMATTERS[ '%lD' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'D-short'( date ) {
-			return DEFAULT_FORMATTERS[ 'D-short' ].format( date );
+		'%sD'( date ) {
+			return DEFAULT_FORMATTERS[ '%sD' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'D-index'( date ) {
+		'%iD'( date ) {
 			const map = {
 				Sunday: 0,
 				Monday: 1,
@@ -194,48 +195,48 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 			 * * "narrow" (e.g., T)
 			 * Thus, there's no way to get number equivalent to a weekday.
 			 */
-			return map[ DEFAULT_FORMATTERS[ 'D-long' ].format( date ) ];
+			return map[ DEFAULT_FORMATTERS[ '%lD' ].format( date ) ];
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'D-2'( date ) {
-			return DEFAULT_FORMATTERS[ 'D-2' ].format( date );
+		'%02D'( date ) {
+			return DEFAULT_FORMATTERS[ '%02D' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'D-1'( date ) {
-			return DEFAULT_FORMATTERS[ 'D-1' ].format( date );
+		'%D'( date ) {
+			return DEFAULT_FORMATTERS[ '%D' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'h-2'( date ) {
-			return DEFAULT_FORMATTERS[ 'h-2' ].format( date );
+		'%02h'( date ) {
+			return DEFAULT_FORMATTERS[ '%02h' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'h-1'( date ) {
-			return DEFAULT_FORMATTERS[ 'h-1' ].format( date );
+		'%h'( date ) {
+			return DEFAULT_FORMATTERS[ '%h' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'm-2'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'm-2' ](
-				DEFAULT_FORMATTERS[ 'm-2' ].format( date )
+		'%02m'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%02m' ](
+				DEFAULT_FORMATTERS[ '%02m' ].format( date )
 			);
 		},
 		/**
@@ -243,17 +244,17 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		'm-1'( date ) {
-			return DEFAULT_FORMATTERS[ 'm-1' ].format( date );
+		'%m'( date ) {
+			return DEFAULT_FORMATTERS[ '%m' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		's-2'( date ) {
-			return ADDITIONAL_FORMATTERS[ 's-2' ](
-				DEFAULT_FORMATTERS[ 's-2' ].format( date )
+		'%02s'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%02s' ](
+				DEFAULT_FORMATTERS[ '%02s' ].format( date )
 			);
 		},
 		/**
@@ -261,17 +262,17 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		's-1'( date ) {
-			return DEFAULT_FORMATTERS[ 's-1' ].format( date );
+		'%s'( date ) {
+			return DEFAULT_FORMATTERS[ '%s' ].format( date );
 		},
 		/**
 		 *
 		 * @param {Date} date
 		 * @returns
 		 */
-		'ms-3'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'ms-3' ](
-				DEFAULT_FORMATTERS[ 'ms-3' ].format( date )
+		'%03ms'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%03ms' ](
+				DEFAULT_FORMATTERS[ '%03ms' ].format( date )
 			);
 		},
 		/**
@@ -279,9 +280,17 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		'ms-2'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'ms-2' ](
-				DEFAULT_FORMATTERS[ 'ms-2' ].format( date )
+		'%tz'( date ) {
+			return DEFAULT_FORMATTERS[ '%tz' ].format( date );
+		},
+		/**
+		 *
+		 * @param {Date} date
+		 * @returns
+		 */
+		'%uA'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%uA' ](
+				DEFAULT_FORMATTERS[ '%uA' ].format( date )
 			);
 		},
 		/**
@@ -289,27 +298,9 @@ export function createFormatters( localesArg = 'default', timezoneArg ) {
 		 * @param {Date} date
 		 * @returns
 		 */
-		tz( date ) {
-			return DEFAULT_FORMATTERS[ tz ].format( date );
-		},
-		/**
-		 *
-		 * @param {Date} date
-		 * @returns
-		 */
-		'a-upper'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'a-upper' ](
-				DEFAULT_FORMATTERS[ 'a-upper' ].format( date )
-			);
-		},
-		/**
-		 *
-		 * @param {Date} date
-		 * @returns
-		 */
-		'a-lower'( date ) {
-			return ADDITIONAL_FORMATTERS[ 'a-lower' ](
-				DEFAULT_FORMATTERS[ 'a-lower' ].format( date )
+		'%lA'( date ) {
+			return ADDITIONAL_FORMATTERS[ '%lA' ](
+				DEFAULT_FORMATTERS[ '%lA' ].format( date )
 			);
 		},
 	};
