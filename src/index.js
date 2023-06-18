@@ -1,7 +1,6 @@
-export {
-	default as DateFactory,
-	InvalidComparisonOperatorError,
-} from './date-factory';
-export { default as DateFormatter } from './date-formatter';
-export * from './types';
+export { createConstraints } from './constraints-factory';
+export { createDate, createDateRange } from './date-factory';
+export { createFormatter } from './formatter-factory';
 export * from './constants';
+export * from './errors';
+export * from './types';
